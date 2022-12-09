@@ -75,7 +75,7 @@ export default function SelectBox({ type }) {
           })}
         </select>
 
-        <select name={name.region} onClick={onClickHandler}>
+        <select name={name.region} onChange={onClickHandler}>
           <option value="" disabled selected>
             시 선택
           </option>

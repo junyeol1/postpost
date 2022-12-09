@@ -5,83 +5,102 @@ import SelectBoxTaxi from "../components/selectBoxTaxi";
 import { useEffect, useState } from "react";
 import { useBoardDataTaxi } from "../store/boardStoreTaxi";
 import { useNavigate } from "react-router-dom";
+import { format } from 'date-fns';
 
 function TaxiPost() {
   const [isFill, setIsFill] = useState(false);
   const [values, setValues] = useState({
     title: "",
-    departures: "",
-    arrivals: "",
-    departureTime: "",
-    totalPassengers: "",
+    startDetail: '',
+    arrivalDetail: '',
+    date: '',
+    time: '',
+    maxPassenger: "",
     content: "",
-    currentPassengers: 0,
   });
   const navigate = useNavigate();
 
   const { selectedOption, boards, setBoards } = useBoardDataTaxi();
   const onChangeValue = (e, type) => {
-    if (type === "departureTime") {
-      let time = e.target.value;
-      const regex = /T|-/g;
-      let newTime = time.replace(regex, "/");
+    if (type === 'departureTime') {
+      const dateTime = new Date(e.target.value);
 
-      setValues((prev) => {
-        return { ...prev, [type]: newTime.replace("-", "/") };
-      });
+      const date = format(dateTime, 'yyyy-MM-dd');
+      const time = format(dateTime, 'HH:mm');
+
+      setValues((prev) => ({ ...prev, date, time }));
     } else {
       setValues((prev) => {
         return { ...prev, [type]: e.target.value };
       });
     }
   };
-  const onClickType = (e) => {
-    if (e.target.checked) {
-      setValues((prev) => {
-        return { ...prev, type: e.target.id };
-      });
-    }
-  };
+  // const onClickType = (e) => {
+  //   if (e.target.checked) {
+  //     setValues((prev) => {
+  //       return { ...prev, type: e.target.id };
+  //     });
+  //   }
+  // };
   useEffect(() => {
     const valueNames = [
-      "title",
-      "departures",
-      "arrivals",
-      "departureTime",
-      "totalPassengers",
-      "content",
+      'title',
+      'startDetail',
+      'arrivalDetail',
+      'date', 
+      'time',
+      'maxPassenger',
+      'content',
     ];
     let isValidate = true;
     valueNames.forEach((value) => {
-      if (values[value] === "") {
+      if (values[value] === '') {
+        console.log(values);
         isValidate = false;
       }
     });
     setIsFill(isValidate);
   }, [values]);
-  const handleSubmit = async (event) => {
-    // 여기부분은 post 요청을 넣으면 될 거같은데 뭔지 몰라서 따로 건들이지 않을게요
-    navigate("/taxi");
-    const currentOption = { ...selectedOption, ...values };
-    const newBoard = {
-      id: boards.length,
-      ...currentOption,
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    const fetchApi = await fetch("http://localhost:5000/api/taxi", {
-      method: "POST",
-      body: JSON.stringify({
-        ...newBoard,
-      }),
-    });
-    fetchApi
-      .then((res) => {
-        return res.json();
-      })
-      .then((data) => console.log(data));
+    const rawData = localStorage.getItem('currentUserId');
+    const user = JSON.parse(rawData);
 
-    event.preventDefault();
+    try {
+      const rawResponse = await fetch(
+        'http://localhost:5000/api/taxiboard',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: values.title,
+            writer: user.id,
+            startProvince: selectedOption.departureDst,
+            startCity: selectedOption.departureRegion,
+            startDetail: values.startDetail,
+            arrivalProvince: selectedOption.arrivalsDst,
+            arrivalCity: selectedOption.arrivalsRegion,
+            arrivalDetail: values.arrivalDetail,
+            date: values.date,
+            time: values.time,
+            maxPassenger: values.maxPassenger,
+            content: values.content,
+          }),
+        }
+      );
+
+      const data = await rawResponse.json();
+      console.log(data);
+
+      navigate('/taxi');
+    } catch (err) {
+      console.error(err);
+    }
   };
+
   return (
     <CarpoolPostWrapper>
       <NavBar />
@@ -90,19 +109,19 @@ function TaxiPost() {
         <StyledLabel>출발지</StyledLabel>
         <BoxWrapper>
           <SelectBoxTaxi type="departure" label="출발지" />
-          <DetailAddress onChange={(e) => onChangeValue(e, "departures")} placeholder="상세주소" />
+          <DetailAddress onChange={(e) => onChangeValue(e, "startDetail")} placeholder="상세주소" />
         </BoxWrapper>
         <StyledLabel>목적지</StyledLabel>
         <BoxWrapper>
           <SelectBoxTaxi type="arrivals" label="목적지" />
-          <DetailAddress onChange={(e) => onChangeValue(e, "arrivals")} placeholder="상세주소" />
+          <DetailAddress onChange={(e) => onChangeValue(e, "arrivalDetail")} placeholder="상세주소" />
         </BoxWrapper>
         <StyledLabel>날짜 및 시간</StyledLabel>
         <Date onChange={(e) => onChangeValue(e, "departureTime")} type="datetime-local" />
         <CarInfo>
           <div>
             <StyledLabel>탑승 인원 수</StyledLabel>
-            <Input onChange={(e) => onChangeValue(e, "totalPassengers")} placeholder="ex) 4" />
+            <Input onChange={(e) => onChangeValue(e, "maxPassenger")} placeholder="ex) 4" />
           </div>
         </CarInfo>
         <InputInfo handleChange={(e) => onChangeValue(e, "content")} title="내용" rows={7} />
